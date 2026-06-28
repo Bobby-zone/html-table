@@ -1,114 +1,74 @@
-import {
-	Editor,
-	MarkdownView,
-	MarkdownFileInfo,
-	Modal,
-	Notice,
-	Plugin,
-} from 'obsidian';
-import {
-	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
-} from './settings';
+import {App, Editor, MarkdownFileInfo, MarkdownView, Notice, Plugin, WorkspaceLeaf} from 'obsidian';
+
+import {TABLE_EDITOR_VIEW, TableEditorView} from './editor/TableEditorView';
+import {TableDocument} from './models/TableDocument';
+import {TableBlockParser} from './parser/TableBlockParser';
+import {TableRenderer} from './renderer/TableRenderer';
 
 // Remember to rename these classes and interfaces!
 
-export default class MyPlugin extends Plugin {
-	settings!: MyPluginSettings;
+export default class TablePlugin extends Plugin {
+  async onload() {
+    // register the custom editor view
+    this.registerView(
+        TABLE_EDITOR_VIEW, (leaf: WorkspaceLeaf) => new TableEditorView(leaf));
 
-	async onload() {
-		await this.loadSettings();
+    // find codeblock table
+    this.registerMarkdownCodeBlockProcessor(
+        'table', async (source, el, ctx) => {
+          try {
+            const model = TableBlockParser.parse(source);
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
+            const renderer = new TableRenderer();
+            await renderer.render(el, model, ctx);
+          } catch (err) {
+            console.error(err);
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
+            el.createEl('pre', {text: 'Failed to render table.'});
+          }
+        });
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			},
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (
-				editor: Editor,
-				_ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				editor.replaceSelection('Sample editor command');
-			},
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			},
-		});
+    // command: edit selected table
+    this.addCommand({
+      id: 'edit-table',
+      name: 'Edit table',
+      editorCallback:
+          async (editor: Editor, _ctx: MarkdownView|MarkdownFileInfo) => {
+            const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+            const selection = editor.getSelection().trim();
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(activeDocument, 'click', (_evt: MouseEvent) => {
-			new Notice('Click');
-		});
+            let model;
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000),
-		);
-	}
+            try {
+              model = TableBlockParser.parse(selection);
+            } catch (err) {
+              console.error(err);
+              new Notice('Invalid table JSON.');
+              return;
+            }
 
-	onunload() {}
+            const leaf = this.app.workspace.getLeaf(true);
 
-	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MyPluginSettings>,
-		);
-	}
+            await leaf.setViewState({type: TABLE_EDITOR_VIEW, active: true});
 
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-}
+            const tableView = leaf.view as TableEditorView;
 
-class SampleModal extends Modal {
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
-	}
+            const document: TableDocument = {
+              editor,
+              from: editor.getCursor('from'),
+              to: editor.getCursor('to'),
+              model,
+              sourceLeaf: view!.leaf
+            };
 
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
+            await tableView.setTable(document);
+          }
+    });
+  }
+
+  onunload() {
+    this.app.workspace.detachLeavesOfType(TABLE_EDITOR_VIEW);
+  }
 }
