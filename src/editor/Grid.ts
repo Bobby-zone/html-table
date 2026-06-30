@@ -1,10 +1,14 @@
 import {TableModel} from '../models/TableModel';
 
+import {Cell} from './Cell';
 import {Row} from './Row';
 import {SelectionManager} from './SelectionManager';
 
 // create <table>
 export class Grid {
+  private table!: HTMLTableElement;
+  private rows: Row[] = [];
+
   constructor(
       private container: HTMLElement,
       private model: TableModel,
@@ -16,21 +20,49 @@ export class Grid {
   private render() {
     this.container.empty();
 
-    const table = this.container.createEl('table', {cls: 'table-grid'});
+    this.table = this.container.createEl('table', {cls: 'table-grid'});
 
-    // column
-    if (this.model.columns.length > 0) {
-      const colgroup = table.createEl('colgroup');
+    for (const [rowIndex, rowModel] of this.model.rows.entries()) {
+      const row = new Row(this.table, rowModel, this.selection, rowIndex);
 
-      for (const col of this.model.columns) {
-        const c = colgroup.createEl('col');
-        if (col.width) c.style.width = `${col.width}px`;
+      this.rows.push(row);
+    }
+  }
+
+  // Cell lookup
+  public getCell(row: number, column: number): Cell|undefined {
+    const rowObject = this.rows[row];
+
+    if (!rowObject) return undefined;
+
+    return rowObject.getCell(column);
+  }
+
+  public getRows(): Row[] {
+    return this.rows;
+  }
+
+  // Rectangle selection
+  public getRectangle(start: Cell, end: Cell): Cell[] {
+    const result: Cell[] = [];
+
+    const top = Math.min(start.getRow(), end.getRow());
+    const bottom = Math.max(start.getRow(), end.getRow());
+
+    const left = Math.min(start.getCol(), end.getCol());
+    const right = Math.max(start.getCol(), end.getCol());
+
+    for (let r = top; r <= bottom; r++) {
+      const row = this.rows[r];
+
+      if (!row) continue;
+
+      for (let c = left; c <= right; c++) {
+        const cell = row.getCell(c);
+
+        if (cell) result.push(cell);
       }
     }
-
-    // row
-    for (const row of this.model.rows) {
-      new Row(table, row, this.selection);
-    }
+    return result;
   }
 }
