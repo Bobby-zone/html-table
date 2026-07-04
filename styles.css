@@ -1,15 +1,8 @@
-/*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
 .table-grid {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
+    margin: 0;
 }
 
 .table-grid td {
@@ -41,9 +34,14 @@ If your plugin does not need CSS, delete this file.
 }
 
 .table-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+
     display: flex;
     gap: 8px;
     padding: 8px;
+
     border-bottom: 1px solid var(--background-modifier-border);
 }
 

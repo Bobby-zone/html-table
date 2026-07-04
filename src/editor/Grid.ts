@@ -1,6 +1,7 @@
 import {TableModel} from '../models/TableModel';
 
 import {Cell} from './Cell';
+import {MouseManager} from './MouseManager';
 import {Row} from './Row';
 import {SelectionManager} from './SelectionManager';
 
@@ -8,12 +9,15 @@ import {SelectionManager} from './SelectionManager';
 export class Grid {
   private table!: HTMLTableElement;
   private rows: Row[] = [];
+  private mouse: MouseManager;
 
   constructor(
       private container: HTMLElement,
       private model: TableModel,
       private selection: SelectionManager,
   ) {
+    this.mouse = new MouseManager(this, selection);
+
     this.render();
   }
 
@@ -23,7 +27,13 @@ export class Grid {
     this.table = this.container.createEl('table', {cls: 'table-grid'});
 
     for (const [rowIndex, rowModel] of this.model.rows.entries()) {
-      const row = new Row(this.table, rowModel, this.selection, rowIndex);
+      const row = new Row(
+          this,
+          this.table,
+          rowModel,
+          this.selection,
+          rowIndex,
+      );
 
       this.rows.push(row);
     }
@@ -64,5 +74,14 @@ export class Grid {
       }
     }
     return result;
+  }
+
+  // helpers
+  public getMouseManager(): MouseManager {
+    return this.mouse;
+  }
+
+  public destroy(): void {
+    this.mouse.destroy();
   }
 }

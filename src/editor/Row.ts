@@ -1,6 +1,7 @@
 import {TableRow} from '../models/TableRow';
 
 import {Cell} from './Cell';
+import {Grid} from './Grid';
 import {SelectionManager} from './SelectionManager';
 
 // create <tr>
@@ -9,6 +10,7 @@ export class Row {
   private cells: Cell[] = [];
 
   constructor(
+      private grid: Grid,
       private table: HTMLTableElement,
       private model: TableRow,
       private selection: SelectionManager,
@@ -22,7 +24,8 @@ export class Row {
 
     for (const [columnIndex, cellModel] of this.model.cells.entries()) {
       const cell = new Cell(
-          this.tr, cellModel, this.selection, this.rowIndex, columnIndex);
+          this.grid, this.tr, cellModel, this.selection, this.rowIndex,
+          columnIndex);
 
       this.cells.push(cell);
     }

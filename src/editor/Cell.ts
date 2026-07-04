@@ -1,6 +1,7 @@
 import {TableCell} from '../models/TableCell';
 
 import {CellState} from './CellState';
+import {Grid} from './Grid';
 import {SelectionManager} from './SelectionManager';
 
 // create <td>
@@ -11,6 +12,7 @@ export class Cell {
   private state = new CellState();
 
   constructor(
+      private grid: Grid,
       private tr: HTMLTableRowElement,
       private model: TableCell,
       private selection: SelectionManager,
@@ -40,30 +42,24 @@ export class Cell {
 
   // events
   private registerEvents(): void {
-    this.td
-        .addEventListener(
-            'mousedown',
-            (event) => {
-              this.selection.selectSingle(this);
-            })
+    this.td.addEventListener('mousedown', (event) => {
+      this.grid.getMouseManager().mouseDown(this, event);
+    });
+    this.td.addEventListener('mouseenter', () => {
+      this.grid.getMouseManager().mouseEnter(this);
+    });
 
-            this.textarea
-        .addEventListener(
-            'input',
-            () => {
-              this.model.text = this.textarea.value;
-            })
+    this.textarea.addEventListener('input', () => {
+      this.model.text = this.textarea.value;
+    });
 
-            this.textarea
-        .addEventListener(
-            'focus',
-            () => {
-              this.activate();
-            })
+    this.textarea.addEventListener('focus', () => {
+      this.activate();
+    });
 
-            this.textarea.addEventListener('blur', () => {
-              this.deactivate();
-            })
+    this.textarea.addEventListener('blur', () => {
+      this.deactivate();
+    });
   }
 
   // selection
